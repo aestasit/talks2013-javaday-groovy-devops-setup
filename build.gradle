@@ -1,0 +1,105 @@
+
+import com.aestasit.infrastructure.aws.gradle.tasks.StartInstance
+import com.aestasit.infrastructure.aws.gradle.tasks.TerminateInstance
+
+buildscript {
+  repositories {
+    mavenCentral()
+    maven { url ossSnapshotRepositoryUrl }
+  }
+  dependencies {
+    classpath 'com.aestasit.infrastructure.aws:gramazon:0.3.6-SNAPSHOT'
+    classpath 'com.aestasit.infrastructure.sshoogr:sshoogr-gradle:0.9.3'
+  }
+}
+
+
+apply plugin: 'gramazon'
+apply plugin: 'secureShell'
+apply plugin: 'groovy'
+apply plugin: 'maven'
+
+aws {
+  acceesKeyId = awsAccessKeyId
+  secretKey = awsSecretKey
+  region = 'eu-west-1'
+}
+
+sshOptions {
+  defaultUser = 'root'
+  defaultKeyFile = file('cloud-do.pem')
+  trustUnknownHosts = true
+}
+
+repositories {
+  mavenCentral()
+  maven { url ossSnapshotRepositoryUrl }
+}
+
+dependencies {
+  compile localGroovy()
+  testCompile 'junit:junit:4.11'
+  testCompile 'com.aestasit.infrastructure.puppet:puppet-unit:0.5.1-SNAPSHOT'
+}
+
+sourceCompatibility = '1.6'
+targetCompatibility = '1.6'
+
+sourceSets.test.groovy.srcDirs = ['tests/groovy']
+sourceSets.test.resources.srcDirs = ['tests/resources']
+
+test {
+  testLogging.showStandardStreams = true
+}
+
+task startInstance(type: StartInstance) {
+  keyName       'cloud-do'
+  securityGroup 'cloud-do'
+  instanceName  'gramazon/cloud-do'
+  stateFileName 'cloud-do.json'
+  ami           'ami-6f07e418'       
+  instanceType  't1.micro'
+  waitForStart  true
+}
+
+task terminateInstance(type: TerminateInstance) {
+  stateFileName 'cloud-do.json'
+}
+
+task zipModules(type: Zip) {
+  baseName = 'puppet-setup'
+  destinationDir = buildDir
+  from("${projectDir}/modules") {
+    include '**/*.*'
+  }
+  from("${projectDir}") {
+    include 'manifests/**'
+    include 'templates/**'
+    include 'lib/**'
+    include 'files/**'
+    include 'Modulefile'
+    into 'derby'
+  }
+  includeEmptyDirs = false
+}
+
+task uploadModules(dependsOn: [zipModules]) << {
+  remoteSession {
+    host = getInstanceState('cloud-do.json').host
+    exec 'rm -rf /tmp/puppet-setup.zip'
+    scp {
+      from { localFile "${buildDir}/puppet-setup.zip" }
+      into { remoteDir "/tmp" }
+    }
+    exec 'rm -rf /tmp/puppet_modules'
+    exec 'unzip /tmp/puppet-setup.zip -d /tmp/puppet_modules'
+  }
+}
+
+test.doFirst {
+  systemProperties = System.getProperties()
+  systemProperties['puppet.integration.tests.host'] = getInstanceState('cloud-do.json').host
+  systemProperties['puppet.integration.tests.user'] = sshOptions.defaultUser
+  systemProperties['puppet.integration.tests.keyFile'] = sshOptions.defaultKeyFile
+  systemProperties['puppet.integration.tests.modulePath'] = '/tmp/puppet_modules'
+}
