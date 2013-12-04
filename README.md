@@ -27,3 +27,7 @@ Before you can take advantage of this setup, you will need to at least:
 More details are also available in the presentation slides: <https://github.com/aestasit/talks2013-javaday-groovy-devops-slides>.
 
 
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/aestasit/talks2013-javaday-groovy-devops-setup/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
