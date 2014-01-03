@@ -7,7 +7,7 @@ Those tools were presented during "**Groovy DevOps in the Cloud**" talk at **Jav
 
 This setup provides a **Gradle** script (`build.gradle`) that glues together all bits and pieces:
 
-- `createInstance` task starts new machine in EC2 
+- `startInstance` task starts new machine in EC2 
 - `uploadModules` task uploads Puppet modules to the newly created machine
 - `test` task runs JUnit integration tests against the newly created machine
 - `terminateInstance` task terminates the machine
